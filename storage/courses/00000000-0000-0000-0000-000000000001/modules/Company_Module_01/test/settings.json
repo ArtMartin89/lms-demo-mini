@@ -1,0 +1,10 @@
+{
+  "module_id": "Company_Module_01",
+  "passing_threshold": 0.7,
+  "time_limit_minutes": 30,
+  "max_attempts": 3,
+  "shuffle_questions": false,
+  "show_results_immediately": true,
+  "allow_review": true
+}
+
