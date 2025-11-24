@@ -15,6 +15,8 @@ function AdminEditor() {
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [lessonTitle, setLessonTitle] = useState('');
   const [lessonContent, setLessonContent] = useState('');
+  const [lessonVideos, setLessonVideos] = useState([]);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
   const [testData, setTestData] = useState(null);
   const [activeTab, setActiveTab] = useState('lessons'); // 'lessons' or 'test'
   const [loading, setLoading] = useState(true);
@@ -82,15 +84,70 @@ function AdminEditor() {
 
   const handleLessonSelect = async (lessonNumber) => {
     try {
-      const response = await api.get(`/admin/modules/${moduleId}/lessons/${lessonNumber}`);
-      const data = response.data;
+      const [lessonRes, videosRes] = await Promise.all([
+        api.get(`/admin/modules/${moduleId}/lessons/${lessonNumber}`),
+        api.get(`/admin/modules/${moduleId}/lessons/${lessonNumber}/videos`).catch(() => ({ data: { videos: [] } }))
+      ]);
+      const data = lessonRes.data;
       setSelectedLesson(data.lesson);
       setLessonTitle(data.lesson.title);
       setLessonContent(data.content || '');
+      setLessonVideos(videosRes.data.videos || []);
       setActiveTab('lessons');
     } catch (error) {
       console.error('Error fetching lesson:', error);
       setMessage('Ошибка загрузки урока');
+    }
+  };
+
+  const handleVideoUpload = async (e) => {
+    if (!selectedLesson || !e.target.files || e.target.files.length === 0) return;
+
+    const file = e.target.files[0];
+    setUploadingVideo(true);
+    setMessage('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await api.post(
+        `/admin/modules/${moduleId}/lessons/${selectedLesson.lesson_number}/video`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      setMessage('Видео успешно загружено');
+      // Refresh video list
+      const videosRes = await api.get(`/admin/modules/${moduleId}/lessons/${selectedLesson.lesson_number}/videos`);
+      setLessonVideos(videosRes.data.videos || []);
+      
+      // Reset file input
+      e.target.value = '';
+    } catch (error) {
+      console.error('Error uploading video:', error);
+      setMessage('Ошибка загрузки видео: ' + (error.response?.data?.detail || error.message));
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
+
+  const handleDeleteVideo = async (filename) => {
+    if (!selectedLesson || !confirm(`Удалить видео "${filename}"?`)) return;
+
+    try {
+      await api.delete(`/admin/modules/${moduleId}/lessons/${selectedLesson.lesson_number}/video/${filename}`);
+      setMessage('Видео удалено');
+      // Refresh video list
+      const videosRes = await api.get(`/admin/modules/${moduleId}/lessons/${selectedLesson.lesson_number}/videos`);
+      setLessonVideos(videosRes.data.videos || []);
+    } catch (error) {
+      console.error('Error deleting video:', error);
+      setMessage('Ошибка удаления видео');
     }
   };
 
@@ -451,6 +508,53 @@ function AdminEditor() {
                         borderRadius: '4px',
                       }}
                     />
+                  </div>
+
+                  <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '4px', border: '1px solid #ddd' }}>
+                    <h4 style={{ marginBottom: '10px' }}>Видео файлы</h4>
+                    
+                    <div style={{ marginBottom: '15px' }}>
+                      <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                        Загрузить видео (MP4, WebM, MOV):
+                      </label>
+                      <input
+                        type="file"
+                        accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
+                        onChange={handleVideoUpload}
+                        disabled={uploadingVideo}
+                        style={{ width: '100%', padding: '5px' }}
+                      />
+                      {uploadingVideo && <p style={{ marginTop: '5px', color: '#666' }}>Загрузка...</p>}
+                    </div>
+
+                    {lessonVideos.length > 0 && (
+                      <div>
+                        <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>Загруженные видео:</p>
+                        <ul style={{ listStyle: 'none', padding: 0 }}>
+                          {lessonVideos.map((video, index) => (
+                            <li key={index} style={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center',
+                              padding: '8px',
+                              marginBottom: '5px',
+                              backgroundColor: 'white',
+                              borderRadius: '4px',
+                              border: '1px solid #ddd'
+                            }}>
+                              <span>{video}</span>
+                              <button
+                                className="btn btn-secondary"
+                                onClick={() => handleDeleteVideo(video)}
+                                style={{ padding: '4px 8px', fontSize: '12px' }}
+                              >
+                                Удалить
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
 
                   <button

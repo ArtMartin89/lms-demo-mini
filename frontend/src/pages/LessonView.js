@@ -9,6 +9,7 @@ function LessonView() {
   const { moduleId, lessonNumber } = useParams();
   const [lesson, setLesson] = useState(null);
   const [content, setContent] = useState('');
+  const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
   const { user, logout } = useAuth();
@@ -20,16 +21,22 @@ function LessonView() {
 
   const fetchLesson = async () => {
     try {
-      const response = await api.get(
-        `/modules/${moduleId}/lessons/${lessonNumber}`
-      );
-      setLesson(response.data.lesson);
-      setContent(response.data.content);
+      const [lessonRes, videosRes] = await Promise.all([
+        api.get(`/modules/${moduleId}/lessons/${lessonNumber}`),
+        api.get(`/modules/${moduleId}/lessons/${lessonNumber}/videos`).catch(() => ({ data: { videos: [] } }))
+      ]);
+      setLesson(lessonRes.data.lesson);
+      setContent(lessonRes.data.content);
+      setVideos(videosRes.data.videos || []);
     } catch (error) {
       console.error('Error fetching lesson:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const getVideoUrl = (filename) => {
+    return `${process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1'}/modules/${moduleId}/lessons/${lessonNumber}/video/${filename}`;
   };
 
   const handleComplete = async () => {
@@ -88,6 +95,30 @@ function LessonView() {
       <div className="container">
         <div className="card">
           <h2>{lesson?.title}</h2>
+          
+          {videos.length > 0 && (
+            <div style={{ marginBottom: '30px' }}>
+              <h3 style={{ marginBottom: '15px' }}>Видео урока</h3>
+              {videos.map((video, index) => (
+                <div key={index} style={{ marginBottom: '20px' }}>
+                  <video
+                    controls
+                    style={{
+                      width: '100%',
+                      maxWidth: '800px',
+                      borderRadius: '8px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    <source src={getVideoUrl(video)} type="video/mp4" />
+                    <source src={getVideoUrl(video)} type="video/webm" />
+                    Ваш браузер не поддерживает воспроизведение видео.
+                  </video>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="lesson-content">
             <ReactMarkdown>{content}</ReactMarkdown>
           </div>

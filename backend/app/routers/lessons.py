@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Lesson, Module, User, UserProgress
@@ -115,4 +116,60 @@ async def complete_lesson(
 
     db.commit()
     return {"message": "Lesson completed", "lesson_id": lesson.id}
+
+
+@router.get("/modules/{module_id}/lessons/{lesson_number}/videos")
+async def get_lesson_videos(
+    module_id: str,
+    lesson_number: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get list of video files for lesson"""
+    lesson = db.query(Lesson).filter(
+        Lesson.module_id == module_id,
+        Lesson.lesson_number == lesson_number
+    ).first()
+
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    course_id = get_course_id_for_module(db, module_id)
+    if not course_id:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    videos = storage_service.list_video_files(course_id, module_id, lesson.id)
+    return {"videos": videos}
+
+
+@router.get("/modules/{module_id}/lessons/{lesson_number}/video/{filename}")
+async def get_video_file(
+    module_id: str,
+    lesson_number: int,
+    filename: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Stream video file"""
+    lesson = db.query(Lesson).filter(
+        Lesson.module_id == module_id,
+        Lesson.lesson_number == lesson_number
+    ).first()
+
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    course_id = get_course_id_for_module(db, module_id)
+    if not course_id:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    video_path = storage_service.get_video_file_path(course_id, module_id, lesson.id, filename)
+    if not video_path:
+        raise HTTPException(status_code=404, detail="Video file not found")
+
+    return FileResponse(
+        str(video_path),
+        media_type="video/mp4",
+        filename=filename
+    )
 

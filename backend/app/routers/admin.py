@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Lesson, Module, User
@@ -8,6 +9,7 @@ from app.storage_service import storage_service
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 from datetime import datetime
+import os
 
 router = APIRouter()
 
@@ -269,4 +271,87 @@ async def update_test(
         "message": "Test updated successfully",
         "module_id": module_id
     }
+
+
+@router.post("/admin/modules/{module_id}/lessons/{lesson_number}/video")
+async def upload_video(
+    module_id: str,
+    lesson_number: int,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Upload video file for lesson (admin only)"""
+    lesson = db.query(Lesson).filter(
+        Lesson.module_id == module_id,
+        Lesson.lesson_number == lesson_number
+    ).first()
+
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    course_id = get_course_id_for_module(db, module_id)
+    if not course_id:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    filename = storage_service.save_video_file(course_id, module_id, lesson.id, file)
+    if not filename:
+        raise HTTPException(status_code=400, detail="Failed to save video file")
+
+    return {
+        "message": "Video uploaded successfully",
+        "filename": filename
+    }
+
+
+@router.get("/admin/modules/{module_id}/lessons/{lesson_number}/videos")
+async def list_lesson_videos(
+    module_id: str,
+    lesson_number: int,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """List video files for lesson (admin only)"""
+    lesson = db.query(Lesson).filter(
+        Lesson.module_id == module_id,
+        Lesson.lesson_number == lesson_number
+    ).first()
+
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    course_id = get_course_id_for_module(db, module_id)
+    if not course_id:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    videos = storage_service.list_video_files(course_id, module_id, lesson.id)
+    return {"videos": videos}
+
+
+@router.delete("/admin/modules/{module_id}/lessons/{lesson_number}/video/{filename}")
+async def delete_video(
+    module_id: str,
+    lesson_number: int,
+    filename: str,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Delete video file (admin only)"""
+    lesson = db.query(Lesson).filter(
+        Lesson.module_id == module_id,
+        Lesson.lesson_number == lesson_number
+    ).first()
+
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    course_id = get_course_id_for_module(db, module_id)
+    if not course_id:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    success = storage_service.delete_video_file(course_id, module_id, lesson.id, filename)
+    if not success:
+        raise HTTPException(status_code=404, detail="Video file not found")
+
+    return {"message": "Video deleted successfully"}
 
