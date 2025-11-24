@@ -8,6 +8,8 @@ import ModuleView from './pages/ModuleView';
 import LessonView from './pages/LessonView';
 import TestView from './pages/TestView';
 import TestResults from './pages/TestResults';
+import AdminEditor from './pages/AdminEditor';
+import AdminRoute from './components/AdminRoute';
 import './App.css';
 
 function PrivateRoute({ children }) {
@@ -65,6 +67,16 @@ function App() {
               element={
                 <PrivateRoute>
                   <TestResults />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin/modules/:moduleId/edit"
+              element={
+                <PrivateRoute>
+                  <AdminRoute>
+                    <AdminEditor />
+                  </AdminRoute>
                 </PrivateRoute>
               }
             />

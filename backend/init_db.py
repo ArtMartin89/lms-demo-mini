@@ -17,7 +17,7 @@ def init_db():
     
     db = SessionLocal()
     try:
-        # Create default admin user
+        # Create or update default admin user
         admin_user = db.query(User).filter(User.email == "admin@example.com").first()
         if not admin_user:
             admin_user = User(
@@ -31,6 +31,14 @@ def init_db():
             )
             db.add(admin_user)
             print("Created admin user: admin@example.com / admin123")
+        else:
+            # Update existing admin user to ensure is_superuser is True
+            if not admin_user.is_superuser:
+                admin_user.is_superuser = True
+                admin_user.role = "creator"
+                print("Updated existing admin user to superuser")
+            else:
+                print("Admin user already exists with superuser rights")
         
         # Create test user
         test_user = db.query(User).filter(User.email == "student@example.com").first()

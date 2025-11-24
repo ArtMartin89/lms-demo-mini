@@ -81,6 +81,45 @@ class StorageService:
             logger.error(f"Error reading test settings: {e}")
             return None
 
+    def save_lesson_content(self, course_id: str, module_id: str, lesson_id: str, content: str) -> bool:
+        """Save lesson content to file"""
+        try:
+            lesson_path = self._get_lesson_path(course_id, module_id, lesson_id)
+            lesson_path.mkdir(parents=True, exist_ok=True)
+            content_file = lesson_path / "content.md"
+            with open(content_file, "w", encoding="utf-8") as f:
+                f.write(content)
+            return True
+        except Exception as e:
+            logger.error(f"Error saving lesson content: {e}")
+            return False
+
+    def save_test_questions(self, course_id: str, module_id: str, questions: Dict[str, Any]) -> bool:
+        """Save test questions to file"""
+        try:
+            test_path = self._get_test_path(course_id, module_id)
+            test_path.mkdir(parents=True, exist_ok=True)
+            questions_file = test_path / "questions.json"
+            with open(questions_file, "w", encoding="utf-8") as f:
+                json.dump(questions, f, ensure_ascii=False, indent=2)
+            return True
+        except Exception as e:
+            logger.error(f"Error saving test questions: {e}")
+            return False
+
+    def save_test_settings(self, course_id: str, module_id: str, settings: Dict[str, Any]) -> bool:
+        """Save test settings to file"""
+        try:
+            test_path = self._get_test_path(course_id, module_id)
+            test_path.mkdir(parents=True, exist_ok=True)
+            settings_file = test_path / "settings.json"
+            with open(settings_file, "w", encoding="utf-8") as f:
+                json.dump(settings, f, ensure_ascii=False, indent=2)
+            return True
+        except Exception as e:
+            logger.error(f"Error saving test settings: {e}")
+            return False
+
 
 storage_service = StorageService()
 

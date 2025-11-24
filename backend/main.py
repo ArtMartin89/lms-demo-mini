@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 import logging
 
 from app.database import engine, Base
-from app.routers import auth, courses, modules, lessons, tests, progress
+from app.routers import auth, courses, modules, lessons, tests, progress, admin
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -30,6 +30,7 @@ app.include_router(modules.router, prefix="/api/v1", tags=["modules"])
 app.include_router(lessons.router, prefix="/api/v1", tags=["lessons"])
 app.include_router(tests.router, prefix="/api/v1", tags=["tests"])
 app.include_router(progress.router, prefix="/api/v1", tags=["progress"])
+app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
 
 
 @app.get("/health")

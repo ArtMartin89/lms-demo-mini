@@ -38,6 +38,14 @@ function Dashboard() {
     }
   };
 
+  // Debug: log user info
+  useEffect(() => {
+    if (user) {
+      console.log('User data:', user);
+      console.log('is_superuser:', user.is_superuser);
+    }
+  }, [user]);
+
   const handleModuleClick = (moduleId) => {
     navigate(`/modules/${moduleId}`);
   };
@@ -49,6 +57,17 @@ function Dashboard() {
           <div className="header-content">
             <h1>LMS MVP - Основы ИИ</h1>
             <div className="header-actions">
+              {user?.is_superuser && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    navigate('/admin/modules/Company_Module_01/edit');
+                  }}
+                  style={{ marginRight: '10px' }}
+                >
+                  Редактор
+                </button>
+              )}
               <span>Привет, {user?.full_name || user?.email}</span>
               <button className="btn btn-secondary" onClick={logout}>
                 Выйти
@@ -67,6 +86,22 @@ function Dashboard() {
         <div className="header-content">
           <h1>LMS MVP - Основы ИИ</h1>
           <div className="header-actions">
+            {user?.is_superuser && (
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  if (modules.length > 0) {
+                    navigate(`/admin/modules/${modules[0].id}/edit`);
+                  } else {
+                    // Navigate to admin editor, it will handle module selection
+                    navigate('/admin/modules/Company_Module_01/edit');
+                  }
+                }}
+                style={{ marginRight: '10px' }}
+              >
+                Редактор
+              </button>
+            )}
             <span>Привет, {user?.full_name || user?.email}</span>
             <button className="btn btn-secondary" onClick={logout}>
               Выйти
