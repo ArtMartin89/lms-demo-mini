@@ -9,6 +9,8 @@ function AdminEditor() {
   const [course, setCourse] = useState(null);
   const [modules, setModules] = useState([]);
   const [currentModule, setCurrentModule] = useState(null);
+  const [moduleTitle, setModuleTitle] = useState('');
+  const [moduleDescription, setModuleDescription] = useState('');
   const [lessons, setLessons] = useState([]);
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [lessonTitle, setLessonTitle] = useState('');
@@ -58,11 +60,13 @@ function AdminEditor() {
   const fetchModuleData = async (mId) => {
     try {
       const [moduleRes, lessonsRes] = await Promise.all([
-        api.get(`/modules/${mId}`),
+        api.get(`/admin/modules/${mId}`),
         api.get(`/admin/modules/${mId}/lessons`),
       ]);
 
       setCurrentModule(moduleRes.data);
+      setModuleTitle(moduleRes.data.title || '');
+      setModuleDescription(moduleRes.data.description || '');
       setLessons(lessonsRes.data.lessons || []);
     } catch (error) {
       console.error('Error fetching module data:', error);
@@ -102,6 +106,35 @@ function AdminEditor() {
     }
   };
 
+  const handleSaveModule = async () => {
+    if (!currentModule) return;
+
+    setSaving(true);
+    setMessage('');
+
+    try {
+      await api.put(`/admin/modules/${moduleId}`, {
+        title: moduleTitle,
+        description: moduleDescription,
+      });
+
+      setMessage('Модуль успешно сохранен');
+      
+      // Update module in list and current module
+      setModules(modules.map(m => 
+        m.id === moduleId 
+          ? { ...m, title: moduleTitle, description: moduleDescription }
+          : m
+      ));
+      setCurrentModule({ ...currentModule, title: moduleTitle, description: moduleDescription });
+    } catch (error) {
+      console.error('Error saving module:', error);
+      setMessage('Ошибка сохранения модуля: ' + (error.response?.data?.detail || error.message));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSaveLesson = async () => {
     if (!selectedLesson) return;
 
@@ -124,7 +157,7 @@ function AdminEditor() {
       ));
     } catch (error) {
       console.error('Error saving lesson:', error);
-      setMessage('Ошибка сохранения урока');
+      setMessage('Ошибка сохранения урока: ' + (error.response?.data?.detail || error.message));
     } finally {
       setSaving(false);
     }
@@ -285,8 +318,51 @@ function AdminEditor() {
 
         {currentModule && (
           <div className="card" style={{ marginBottom: '20px' }}>
-            <h2>{currentModule.title}</h2>
-            <p>{currentModule.description}</p>
+            <h3 style={{ marginBottom: '15px' }}>Редактирование модуля</h3>
+            
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                Название модуля:
+              </label>
+              <input
+                type="text"
+                value={moduleTitle}
+                onChange={(e) => setModuleTitle(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  fontSize: '16px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                Описание модуля:
+              </label>
+              <textarea
+                value={moduleDescription}
+                onChange={(e) => setModuleDescription(e.target.value)}
+                style={{
+                  width: '100%',
+                  minHeight: '80px',
+                  padding: '8px',
+                  fontSize: '14px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                }}
+              />
+            </div>
+
+            <button
+              className="btn btn-primary"
+              onClick={handleSaveModule}
+              disabled={saving}
+            >
+              {saving ? 'Сохранение...' : 'Сохранить модуль'}
+            </button>
           </div>
         )}
 
@@ -332,8 +408,14 @@ function AdminEditor() {
                 <div className="card">
                   <h3>Редактирование урока {selectedLesson.lesson_number}</h3>
                   
-                  <div style={{ marginBottom: '15px' }}>
-                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                  <div style={{ 
+                    marginBottom: '20px', 
+                    padding: '15px', 
+                    backgroundColor: '#f5f5f5', 
+                    borderRadius: '4px',
+                    border: '1px solid #ddd'
+                  }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', fontSize: '16px' }}>
                       Название урока:
                     </label>
                     <input
@@ -342,11 +424,13 @@ function AdminEditor() {
                       onChange={(e) => setLessonTitle(e.target.value)}
                       style={{
                         width: '100%',
-                        padding: '8px',
+                        padding: '10px',
                         fontSize: '16px',
-                        border: '1px solid #ddd',
+                        border: '2px solid #4a90e2',
                         borderRadius: '4px',
+                        fontWeight: '500',
                       }}
+                      placeholder="Введите название урока"
                     />
                   </div>
 

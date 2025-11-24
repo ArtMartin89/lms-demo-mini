@@ -40,6 +40,53 @@ class TestUpdateRequest(BaseModel):
     settings: Optional[Dict[str, Any]] = None
 
 
+class ModuleUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+
+
+@router.get("/admin/modules/{module_id}")
+async def get_module_for_edit(
+    module_id: str,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Get module for editing (admin only)"""
+    module = db.query(Module).filter(Module.id == module_id).first()
+    if not module:
+        raise HTTPException(status_code=404, detail="Module not found")
+    return module
+
+
+@router.put("/admin/modules/{module_id}")
+async def update_module(
+    module_id: str,
+    update_data: ModuleUpdateRequest,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Update module title and/or description (admin only)"""
+    module = db.query(Module).filter(Module.id == module_id).first()
+    if not module:
+        raise HTTPException(status_code=404, detail="Module not found")
+
+    if update_data.title is not None:
+        module.title = update_data.title
+        module.updated_at = datetime.utcnow()
+
+    if update_data.description is not None:
+        module.description = update_data.description
+        module.updated_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(module)
+
+    return {
+        "message": "Module updated successfully",
+        "module": module
+    }
+
+
 @router.get("/admin/modules/{module_id}/lessons")
 async def get_module_lessons(
     module_id: str,
