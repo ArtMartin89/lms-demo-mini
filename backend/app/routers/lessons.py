@@ -1,13 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Lesson, Module, User, UserProgress
 from app.schemas import LessonContentResponse, LessonResponse
-from app.auth import get_current_user
+from app.auth import get_current_user, get_current_user_optional_token
 from app.storage_service import storage_service
 from datetime import datetime
 import uuid
+import mimetypes
+import os
 
 router = APIRouter()
 
@@ -147,10 +149,11 @@ async def get_video_file(
     module_id: str,
     lesson_number: int,
     filename: str,
-    current_user: User = Depends(get_current_user),
+    request: Request,
+    current_user: User = Depends(get_current_user_optional_token),
     db: Session = Depends(get_db)
 ):
-    """Stream video file"""
+    """Stream video file with proper MIME type and range request support"""
     lesson = db.query(Lesson).filter(
         Lesson.module_id == module_id,
         Lesson.lesson_number == lesson_number
@@ -164,12 +167,30 @@ async def get_video_file(
         raise HTTPException(status_code=404, detail="Course not found")
 
     video_path = storage_service.get_video_file_path(course_id, module_id, lesson.id, filename)
-    if not video_path:
+    if not video_path or not video_path.exists():
         raise HTTPException(status_code=404, detail="Video file not found")
+
+    # Determine MIME type from file extension
+    mime_type, _ = mimetypes.guess_type(str(video_path))
+    if not mime_type or not mime_type.startswith('video/'):
+        # Fallback MIME types for common video formats
+        ext = os.path.splitext(filename)[1].lower()
+        mime_map = {
+            '.mp4': 'video/mp4',
+            '.webm': 'video/webm',
+            '.mov': 'video/quicktime',
+            '.avi': 'video/x-msvideo',
+            '.mkv': 'video/x-matroska',
+        }
+        mime_type = mime_map.get(ext, 'video/mp4')
 
     return FileResponse(
         str(video_path),
-        media_type="video/mp4",
-        filename=filename
+        media_type=mime_type,
+        filename=filename,
+        headers={
+            'Accept-Ranges': 'bytes',
+            'Content-Disposition': f'inline; filename="{filename}"',
+        }
     )
 

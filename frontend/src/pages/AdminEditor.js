@@ -22,6 +22,9 @@ function AdminEditor() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupMessage, setPopupMessage] = useState('');
+  const [popupHiding, setPopupHiding] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -137,7 +140,7 @@ function AdminEditor() {
   };
 
   const handleDeleteVideo = async (filename) => {
-    if (!selectedLesson || !confirm(`Удалить видео "${filename}"?`)) return;
+    if (!selectedLesson || !window.confirm(`Удалить видео "${filename}"?`)) return;
 
     try {
       await api.delete(`/admin/modules/${moduleId}/lessons/${selectedLesson.lesson_number}/video/${filename}`);
@@ -204,7 +207,10 @@ function AdminEditor() {
         content: lessonContent,
       });
 
-      setMessage('Урок успешно сохранен');
+      // Show popup instead of regular message
+      setPopupMessage('Урок успешно сохранен');
+      setPopupHiding(false);
+      setShowPopup(true);
       
       // Update lesson in list
       setLessons(lessons.map(l => 
@@ -212,6 +218,16 @@ function AdminEditor() {
           ? { ...l, title: lessonTitle }
           : l
       ));
+      
+      // Start hiding animation after 3 seconds
+      setTimeout(() => {
+        setPopupHiding(true);
+        // Actually remove after animation completes
+        setTimeout(() => {
+          setShowPopup(false);
+          setPopupHiding(false);
+        }, 300);
+      }, 3000);
     } catch (error) {
       console.error('Error saving lesson:', error);
       setMessage('Ошибка сохранения урока: ' + (error.response?.data?.detail || error.message));
@@ -348,9 +364,15 @@ function AdminEditor() {
       </div>
 
       <div className="container">
-        {message && (
+        {message && !showPopup && (
           <div className={`card ${message.includes('Ошибка') ? 'error' : 'success'}`} style={{ marginBottom: '20px' }}>
             {message}
+          </div>
+        )}
+        
+        {showPopup && (
+          <div className={`success-popup ${popupHiding ? 'hiding' : ''}`}>
+            {popupMessage}
           </div>
         )}
 

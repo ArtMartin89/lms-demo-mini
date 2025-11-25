@@ -33,6 +33,17 @@ app.include_router(progress.router, prefix="/api/v1", tags=["progress"])
 app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
 
 
+@app.get("/")
+async def root():
+    return {
+        "message": "LMS MVP API",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "health": "/health",
+        "api": "/api/v1"
+    }
+
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}

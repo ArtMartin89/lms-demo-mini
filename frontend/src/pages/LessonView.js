@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import ReactMarkdown from 'react-markdown';
+import ReactPlayer from 'react-player';
 import '../App.css';
 
 function LessonView() {
@@ -36,7 +37,14 @@ function LessonView() {
   };
 
   const getVideoUrl = (filename) => {
-    return `${process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1'}/modules/${moduleId}/lessons/${lessonNumber}/video/${filename}`;
+    const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+    const videoUrl = `${baseUrl}/modules/${moduleId}/lessons/${lessonNumber}/video/${filename}`;
+    // Add token as query parameter for video streaming (react-player doesn't send auth headers)
+    const token = localStorage.getItem('token');
+    if (token) {
+      return `${videoUrl}?token=${encodeURIComponent(token)}`;
+    }
+    return videoUrl;
   };
 
   const handleComplete = async () => {
@@ -99,23 +107,51 @@ function LessonView() {
           {videos.length > 0 && (
             <div style={{ marginBottom: '30px' }}>
               <h3 style={{ marginBottom: '15px' }}>Видео урока</h3>
-              {videos.map((video, index) => (
-                <div key={index} style={{ marginBottom: '20px' }}>
-                  <video
-                    controls
-                    style={{
-                      width: '100%',
-                      maxWidth: '800px',
+              {videos.map((video, index) => {
+                const videoUrl = getVideoUrl(video);
+                return (
+                  <div key={index} style={{ marginBottom: '30px' }}>
+                    <div style={{
+                      position: 'relative',
+                      paddingTop: '56.25%', // 16:9 aspect ratio
                       borderRadius: '8px',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                    }}
-                  >
-                    <source src={getVideoUrl(video)} type="video/mp4" />
-                    <source src={getVideoUrl(video)} type="video/webm" />
-                    Ваш браузер не поддерживает воспроизведение видео.
-                  </video>
-                </div>
-              ))}
+                      overflow: 'hidden',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                      backgroundColor: '#000',
+                      maxWidth: '800px'
+                    }}>
+                      <ReactPlayer
+                        url={videoUrl}
+                        controls
+                        playing={false}
+                        width="100%"
+                        height="100%"
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0
+                        }}
+                        config={{
+                          file: {
+                            attributes: {
+                              controlsList: 'nodownload',
+                              disablePictureInPicture: true,
+                              crossOrigin: 'anonymous'
+                            },
+                            forceVideo: true,
+                            hlsOptions: {
+                              enableWorker: true
+                            }
+                          }
+                        }}
+                        onError={(error) => {
+                          console.error('Video playback error:', error);
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
