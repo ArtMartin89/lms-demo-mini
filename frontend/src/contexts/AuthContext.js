@@ -51,7 +51,8 @@ export function AuthProvider({ children }) {
         throw new Error(error.response.data?.detail || 'Ошибка входа');
       } else if (error.request) {
         // Request made but no response
-        throw new Error('Сервер не отвечает. Убедитесь, что backend запущен на http://localhost:8000');
+        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+        throw new Error(`Сервер не отвечает. Проверьте подключение к ${apiUrl.replace('/api/v1', '')}`);
       } else {
         // Something else happened
         throw new Error(error.message || 'Ошибка входа');

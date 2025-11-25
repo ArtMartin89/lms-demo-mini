@@ -2,7 +2,7 @@
 POSTGRES_USER=lms_user
 POSTGRES_PASSWORD=lmsDemosecure25
 POSTGRES_DB=lms_db
-DATABASE_URL=postgresql://lms_user:your_secure_password_here@db:5432/lms_db
+DATABASE_URL=postgresql://lms_user:lmsDemosecure25@db:5432/lms_db
 
 # Backend Configuration
 SECRET_KEY=your-secret-key-change-in-production-min-32-chars
