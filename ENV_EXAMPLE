@@ -1,6 +1,6 @@
 # Database Configuration
 POSTGRES_USER=lms_user
-POSTGRES_PASSWORD=your_secure_password_here
+POSTGRES_PASSWORD=lmsDemosecure25
 POSTGRES_DB=lms_db
 DATABASE_URL=postgresql://lms_user:your_secure_password_here@db:5432/lms_db
 
@@ -10,7 +10,9 @@ BACKEND_PORT=8000
 STORAGE_PATH=/app/storage
 
 # Frontend Configuration
-REACT_APP_API_URL=http://localhost:8000/api/v1
+# ВАЖНО: Для VPS используйте IP адрес сервера, а не localhost!
+# Узнайте IP: curl ifconfig.me
+REACT_APP_API_URL=http://YOUR_SERVER_IP:8000/api/v1
 # Для production с доменом:
 # REACT_APP_API_URL=http://your-domain.com/api/v1
 # или для HTTPS:
@@ -18,9 +20,10 @@ REACT_APP_API_URL=http://localhost:8000/api/v1
 FRONTEND_PORT=3000
 
 # CORS Configuration
+# ВАЖНО: Для VPS используйте IP адрес сервера, а не localhost!
 # Разделите несколько origins запятыми
-CORS_ORIGINS=http://localhost:3000,http://localhost:3001
-# Для production:
+CORS_ORIGINS=http://YOUR_SERVER_IP:3000
+# Для production с доменом:
 # CORS_ORIGINS=http://your-domain.com,https://your-domain.com
 
 # Server Configuration (для VPS)
