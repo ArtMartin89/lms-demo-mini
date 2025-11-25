@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
@@ -25,6 +25,7 @@ function AdminEditor() {
   const [showPopup, setShowPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState('');
   const [popupHiding, setPopupHiding] = useState(false);
+  const contentTextareaRef = useRef(null);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -152,6 +153,29 @@ function AdminEditor() {
       console.error('Error deleting video:', error);
       setMessage('Ошибка удаления видео');
     }
+  };
+
+  const handleInsertVideo = (filename) => {
+    if (!contentTextareaRef.current) return;
+    
+    const textarea = contentTextareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const textBefore = lessonContent.substring(0, start);
+    const textAfter = lessonContent.substring(end);
+    
+    // Insert video tag at cursor position
+    const videoTag = `[VIDEO:${filename}]`;
+    const newContent = textBefore + videoTag + textAfter;
+    
+    setLessonContent(newContent);
+    
+    // Set cursor position after inserted video tag
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = start + videoTag.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
   };
 
   const handleTestSelect = async () => {
@@ -518,6 +542,7 @@ function AdminEditor() {
                       Содержимое (Markdown):
                     </label>
                     <textarea
+                      ref={contentTextareaRef}
                       value={lessonContent}
                       onChange={(e) => setLessonContent(e.target.value)}
                       style={{
@@ -530,6 +555,9 @@ function AdminEditor() {
                         borderRadius: '4px',
                       }}
                     />
+                    <p style={{ marginTop: '5px', fontSize: '12px', color: '#666' }}>
+                      Подсказка: Для вставки видео в текст используйте кнопку "Вставить" рядом с загруженным видео
+                    </p>
                   </div>
 
                   <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '4px', border: '1px solid #ddd' }}>
@@ -564,7 +592,15 @@ function AdminEditor() {
                               borderRadius: '4px',
                               border: '1px solid #ddd'
                             }}>
-                              <span>{video}</span>
+                              <span style={{ flex: 1, marginRight: '10px' }}>{video}</span>
+                              <button
+                                className="btn btn-primary"
+                                onClick={() => handleInsertVideo(video)}
+                                style={{ padding: '4px 8px', fontSize: '12px', marginRight: '5px' }}
+                                title="Вставить видео в текущую позицию курсора"
+                              >
+                                Вставить
+                              </button>
                               <button
                                 className="btn btn-secondary"
                                 onClick={() => handleDeleteVideo(video)}

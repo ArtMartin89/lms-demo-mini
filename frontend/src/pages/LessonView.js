@@ -6,11 +6,68 @@ import ReactMarkdown from 'react-markdown';
 import ReactPlayer from 'react-player';
 import '../App.css';
 
+// Custom component for rendering video in markdown
+const VideoRenderer = ({ moduleId, lessonNumber, filename }) => {
+  const getVideoUrl = (filename) => {
+    const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+    const videoUrl = `${baseUrl}/modules/${moduleId}/lessons/${lessonNumber}/video/${filename}`;
+    const token = localStorage.getItem('token');
+    if (token) {
+      return `${videoUrl}?token=${encodeURIComponent(token)}`;
+    }
+    return videoUrl;
+  };
+
+  const videoUrl = getVideoUrl(filename);
+  
+  return (
+    <div style={{ marginBottom: '30px', marginTop: '30px' }}>
+      <div style={{
+        position: 'relative',
+        paddingTop: '56.25%', // 16:9 aspect ratio
+        borderRadius: '8px',
+        overflow: 'hidden',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        backgroundColor: '#000',
+        maxWidth: '800px'
+      }}>
+        <ReactPlayer
+          url={videoUrl}
+          controls
+          playing={false}
+          width="100%"
+          height="100%"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0
+          }}
+          config={{
+            file: {
+              attributes: {
+                controlsList: 'nodownload',
+                disablePictureInPicture: true,
+                crossOrigin: 'anonymous'
+              },
+              forceVideo: true,
+              hlsOptions: {
+                enableWorker: true
+              }
+            }
+          }}
+          onError={(error) => {
+            console.error('Video playback error:', error);
+          }}
+        />
+      </div>
+    </div>
+  );
+};
+
 function LessonView() {
   const { moduleId, lessonNumber } = useParams();
   const [lesson, setLesson] = useState(null);
   const [content, setContent] = useState('');
-  const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
   const { user, logout } = useAuth();
@@ -22,13 +79,9 @@ function LessonView() {
 
   const fetchLesson = async () => {
     try {
-      const [lessonRes, videosRes] = await Promise.all([
-        api.get(`/modules/${moduleId}/lessons/${lessonNumber}`),
-        api.get(`/modules/${moduleId}/lessons/${lessonNumber}/videos`).catch(() => ({ data: { videos: [] } }))
-      ]);
+      const lessonRes = await api.get(`/modules/${moduleId}/lessons/${lessonNumber}`);
       setLesson(lessonRes.data.lesson);
       setContent(lessonRes.data.content);
-      setVideos(videosRes.data.videos || []);
     } catch (error) {
       console.error('Error fetching lesson:', error);
     } finally {
@@ -36,15 +89,24 @@ function LessonView() {
     }
   };
 
-  const getVideoUrl = (filename) => {
-    const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
-    const videoUrl = `${baseUrl}/modules/${moduleId}/lessons/${lessonNumber}/video/${filename}`;
-    // Add token as query parameter for video streaming (react-player doesn't send auth headers)
-    const token = localStorage.getItem('token');
-    if (token) {
-      return `${videoUrl}?token=${encodeURIComponent(token)}`;
+  // Parse content and replace [VIDEO:filename] with video components
+  const parseContentWithVideos = (content) => {
+    // Replace [VIDEO:filename] with a special markdown image syntax that we'll handle
+    return content.replace(/\[VIDEO:([^\]]+)\]/g, (match, filename) => {
+      return `![VIDEO](${filename})`;
+    });
+  };
+
+  // Custom components for react-markdown
+  const markdownComponents = {
+    img: ({ node, ...props }) => {
+      // Check if this is a video placeholder
+      if (props.alt === 'VIDEO') {
+        return <VideoRenderer moduleId={moduleId} lessonNumber={lessonNumber} filename={props.src} />;
+      }
+      // Regular image
+      return <img {...props} />;
     }
-    return videoUrl;
   };
 
   const handleComplete = async () => {
@@ -104,59 +166,10 @@ function LessonView() {
         <div className="card">
           <h2>{lesson?.title}</h2>
           
-          {videos.length > 0 && (
-            <div style={{ marginBottom: '30px' }}>
-              <h3 style={{ marginBottom: '15px' }}>Видео урока</h3>
-              {videos.map((video, index) => {
-                const videoUrl = getVideoUrl(video);
-                return (
-                  <div key={index} style={{ marginBottom: '30px' }}>
-                    <div style={{
-                      position: 'relative',
-                      paddingTop: '56.25%', // 16:9 aspect ratio
-                      borderRadius: '8px',
-                      overflow: 'hidden',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                      backgroundColor: '#000',
-                      maxWidth: '800px'
-                    }}>
-                      <ReactPlayer
-                        url={videoUrl}
-                        controls
-                        playing={false}
-                        width="100%"
-                        height="100%"
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0
-                        }}
-                        config={{
-                          file: {
-                            attributes: {
-                              controlsList: 'nodownload',
-                              disablePictureInPicture: true,
-                              crossOrigin: 'anonymous'
-                            },
-                            forceVideo: true,
-                            hlsOptions: {
-                              enableWorker: true
-                            }
-                          }
-                        }}
-                        onError={(error) => {
-                          console.error('Video playback error:', error);
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
           <div className="lesson-content">
-            <ReactMarkdown>{content}</ReactMarkdown>
+            <ReactMarkdown components={markdownComponents}>
+              {parseContentWithVideos(content)}
+            </ReactMarkdown>
           </div>
           <div style={{ marginTop: '30px' }}>
             <button
