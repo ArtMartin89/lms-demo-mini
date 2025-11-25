@@ -1,0 +1,35 @@
+# Database Configuration
+POSTGRES_USER=lms_user
+POSTGRES_PASSWORD=your_secure_password_here
+POSTGRES_DB=lms_db
+DATABASE_URL=postgresql://lms_user:your_secure_password_here@db:5432/lms_db
+
+# Backend Configuration
+SECRET_KEY=your-secret-key-change-in-production-min-32-chars
+BACKEND_PORT=8000
+STORAGE_PATH=/app/storage
+
+# Frontend Configuration
+REACT_APP_API_URL=http://localhost:8000/api/v1
+# Для production с доменом:
+# REACT_APP_API_URL=http://your-domain.com/api/v1
+# или для HTTPS:
+# REACT_APP_API_URL=https://your-domain.com/api/v1
+FRONTEND_PORT=3000
+
+# CORS Configuration
+# Разделите несколько origins запятыми
+CORS_ORIGINS=http://localhost:3000,http://localhost:3001
+# Для production:
+# CORS_ORIGINS=http://your-domain.com,https://your-domain.com
+
+# Server Configuration (для VPS)
+DOMAIN=your-domain.com
+PROTOCOL=http
+# или для HTTPS:
+# PROTOCOL=https
+
+# Nginx Configuration
+NGINX_HTTP_PORT=80
+NGINX_HTTPS_PORT=443
+

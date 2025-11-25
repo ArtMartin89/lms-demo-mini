@@ -223,6 +223,182 @@ npm start
 ✅ Нормализованная БД
 ✅ Миграции (через SQLAlchemy)
 
+## Развертывание на VPS
+
+### Подготовка
+
+1. **Установите Docker и Docker Compose на VPS:**
+```bash
+# Ubuntu/Debian
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo apt-get install docker-compose-plugin -y
+```
+
+2. **Клонируйте проект на сервер:**
+```bash
+git clone <your-repo-url>
+cd "LMS demo mini"
+```
+
+3. **Создайте файл `.env` на основе примера:**
+```bash
+# Скопируйте пример (если есть .env.example)
+# Или создайте .env вручную со следующими переменными:
+```
+
+**Минимальный .env файл:**
+```env
+# Database
+POSTGRES_USER=lms_user
+POSTGRES_PASSWORD=your_secure_password_here
+POSTGRES_DB=lms_db
+DATABASE_URL=postgresql://lms_user:your_secure_password_here@db:5432/lms_db
+
+# Backend
+SECRET_KEY=your-secret-key-min-32-chars-change-this-in-production
+STORAGE_PATH=/app/storage
+CORS_ORIGINS=http://your-domain.com,https://your-domain.com
+
+# Frontend
+REACT_APP_API_URL=http://your-domain.com/api/v1
+# или для HTTPS:
+# REACT_APP_API_URL=https://your-domain.com/api/v1
+
+# Nginx
+NGINX_HTTP_PORT=80
+NGINX_HTTPS_PORT=443
+```
+
+### Развертывание (Production)
+
+**Вариант 1: С Nginx (рекомендуется)**
+
+1. **Создайте директорию для SSL сертификатов (если используете HTTPS):**
+```bash
+mkdir -p nginx/ssl
+# Поместите сертификаты: cert.pem и key.pem в nginx/ssl/
+```
+
+2. **Запустите production конфигурацию:**
+```bash
+docker-compose -f docker-compose.prod.yml up -d --build
+```
+
+3. **Инициализируйте базу данных:**
+```bash
+docker-compose -f docker-compose.prod.yml exec backend python init_db.py
+```
+
+4. **Проверьте статус:**
+```bash
+docker-compose -f docker-compose.prod.yml ps
+```
+
+**Вариант 2: Без Nginx (для тестирования)**
+
+1. **Используйте обычный docker-compose.yml:**
+```bash
+docker-compose up -d --build
+docker-compose exec backend python init_db.py
+```
+
+2. **Откройте порты в firewall:**
+```bash
+# Ubuntu/Debian
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+# или для тестирования:
+sudo ufw allow 3000/tcp
+sudo ufw allow 8000/tcp
+```
+
+### Настройка домена
+
+1. **Настройте DNS записи:**
+   - A запись: `your-domain.com` → IP вашего VPS
+   - A запись: `www.your-domain.com` → IP вашего VPS
+
+2. **Обновите nginx/nginx.conf:**
+   - Замените `your-domain.com` на ваш домен
+   - Раскомментируйте HTTPS секцию, если используете SSL
+
+3. **Настройте SSL (Let's Encrypt):**
+```bash
+# Установите certbot
+sudo apt-get install certbot python3-certbot-nginx -y
+
+# Получите сертификат
+sudo certbot --nginx -d your-domain.com -d www.your-domain.com
+
+# Или вручную:
+# Поместите сертификаты в nginx/ssl/cert.pem и nginx/ssl/key.pem
+```
+
+### Обновление приложения
+
+```bash
+# Остановите контейнеры
+docker-compose -f docker-compose.prod.yml down
+
+# Обновите код
+git pull
+
+# Пересоберите и запустите
+docker-compose -f docker-compose.prod.yml up -d --build
+
+# Если изменилась структура БД, выполните миграции
+docker-compose -f docker-compose.prod.yml exec backend python init_db.py
+```
+
+### Мониторинг и логи
+
+```bash
+# Просмотр логов всех сервисов
+docker-compose -f docker-compose.prod.yml logs -f
+
+# Логи конкретного сервиса
+docker-compose -f docker-compose.prod.yml logs -f backend
+docker-compose -f docker-compose.prod.yml logs -f frontend
+docker-compose -f docker-compose.prod.yml logs -f nginx
+
+# Статус контейнеров
+docker-compose -f docker-compose.prod.yml ps
+
+# Использование ресурсов
+docker stats
+```
+
+### Резервное копирование
+
+```bash
+# Бэкап базы данных
+docker-compose -f docker-compose.prod.yml exec db pg_dump -U lms_user lms_db > backup_$(date +%Y%m%d).sql
+
+# Бэкап storage
+tar -czf storage_backup_$(date +%Y%m%d).tar.gz storage/
+
+# Восстановление БД
+cat backup_20240101.sql | docker-compose -f docker-compose.prod.yml exec -T db psql -U lms_user lms_db
+```
+
+### Важные замечания
+
+⚠️ **Безопасность:**
+- Обязательно измените `SECRET_KEY` и пароли БД в `.env`
+- Используйте HTTPS в production
+- Настройте firewall (ufw/iptables)
+- Регулярно обновляйте Docker образы
+
+⚠️ **Производительность:**
+- Для production рекомендуется использовать production build frontend (Dockerfile.prod)
+- Настройте лимиты ресурсов в docker-compose.prod.yml
+- Используйте reverse proxy (nginx) для статики
+
+⚠️ **Хранение данных:**
+- Данные БД хранятся в Docker volume `postgres_data`
+- Контент курсов в `./storage` - убедитесь, что он сохранен при обновлениях
+
 ## Лицензия
 
 Внутренний проект для демонстрации MVP LMS.

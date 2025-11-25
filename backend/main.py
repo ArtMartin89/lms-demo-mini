@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
+import os
 
 from app.database import engine, Base
 from app.routers import auth, courses, modules, lessons, tests, progress, admin
@@ -11,10 +12,13 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="LMS MVP API", version="1.0.0")
 
-# CORS
+# CORS - получаем origins из переменной окружения
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+cors_origins = [origin.strip() for origin in cors_origins]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
